@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Graph Visualizer</title>
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #network {
+      width: 100%;
+      height: 600px;
+      border: 1px solid #ccc;
+      margin-top: 20px;
+    }
+    textarea {
+      width: 100%;
+      height: 120px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    select, label, button {
+      margin-right: 10px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Graph Visualizer</h2>
+
+  <label>Input Type:</label>
+  <select id="inputType" onchange="updatePlaceholder()">
+    <option value="adj">Adjacency List</option>
+    <option value="edge">Edge List</option>
+  </select>
+
+  <label><input type="checkbox" id="directed"> Directed</label>
+  <label><input type="checkbox" id="weighted"> Weighted</label>
+  <button onclick="drawGraph()">Draw Graph</button>
+  <br />
+  
+  <br />
+  <textarea id="graphInput"></textarea>
+
+  <div id="network"></div>
+
+  <script>
+    function updatePlaceholder() {
+      const inputType = document.getElementById('inputType').value;
+      const textarea = document.getElementById('graphInput');
+      const formatLabel = document.getElementById('inputFormatLabel');
+
+      if (inputType === 'adj') {
+        textarea.placeholder = "1: (2, 4), (3, 5)\n2: (3, 2)";
+        formatLabel.innerHTML = "<strong>Format:</strong> 1: (2, 4), (3, 5)";
+      } else {
+        textarea.placeholder = "[[1, 2, 4], [2, 3], [3, 1, 1]]";
+        formatLabel.innerHTML = "<strong>Format:</strong> [(1, 2, 4), (2, 3), (3, 1, 1)]";
+      }
+    }
+
+    function drawGraph() {
+      const inputType = document.getElementById('inputType').value;
+      const isDirected = document.getElementById('directed').checked;
+      const isWeighted = document.getElementById('weighted').checked;
+      const input = document.getElementById('graphInput').value.trim();
+
+      const nodesSet = new Set();
+      const edges = [];
+
+      if (inputType === 'adj') {
+        const lines = input.split('\n');
+        for (const line of lines) {
+          if (!line.includes(':')) continue;
+          const [src, rest] = line.split(':').map(s => s.trim());
+          const pairs = rest.split(/\),\s*/).map(s => s.replace(/[()]/g, '').trim()).filter(Boolean);
+
+          for (const pair of pairs) {
+            const [target, weightStr] = pair.split(',').map(s => s.trim());
+            const weight = parseFloat(weightStr || 1);
+            nodesSet.add(src);
+            nodesSet.add(target);
+            edges.push({
+              from: String(src),
+              to: String(target),
+              label: isWeighted ? String(weight) : '',
+              arrows: isDirected ? 'to' : ''
+            });
+          }
+        }
+      } else if (inputType === 'edge') {
+        let edgeList;
+        try {
+          edgeList = JSON.parse(input);
+        } catch {
+          alert("Invalid edge list. Make sure it's valid JSON.");
+          return;
+        }
+        edgeList.forEach(edge => {
+          if (edge.length < 2) return;
+          const [from, to, w] = edge;
+          const weight = w !== undefined ? w : 1;
+          nodesSet.add(from);
+          nodesSet.add(to);
+          edges.push({
+            from: String(from),
+            to: String(to),
+            label: isWeighted ? String(weight) : '',
+            arrows: isDirected ? 'to' : ''
+          });
+        });
+      }
+
+      const nodes = Array.from(nodesSet).map(id => ({
+        id: String(id),
+        label: String(id)
+      }));
+
+      const container = document.getElementById('network');
+      const data = {
+        nodes: new vis.DataSet(nodes),
+        edges: new vis.DataSet(edges)
+      };
+      const options = {
+        edges: {
+          arrows: isDirected ? 'to' : '',
+          font: { align: 'middle', size: 14 }
+        },
+        physics: { stabilization: true }
+      };
+
+      new vis.Network(container, data, options);
+    }
+
+    
+    updatePlaceholder();
+  </script>
+</body>
+</html>
